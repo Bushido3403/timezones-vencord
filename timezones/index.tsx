@@ -19,23 +19,23 @@ let userTimezones: TimezoneMap = {};
 
 function loadTimezones() {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-            // If it breaks here, someone probably hand‑edited localStorage.
+        const raw = settings.store.storedTimezones;
+        if (raw && typeof raw === "string") {
             userTimezones = JSON.parse(raw);
+        } else {
+            userTimezones = {};
         }
     } catch (err) {
-        console.warn("[Timezones] Failed to load stored timezones:", err);
+        console.warn("[Timezones] Failed to load stored timezones from settings:", err);
         userTimezones = {};
     }
 }
 
 function saveTimezones() {
     try {
-        // Fire‑and‑forget: worst case, user has to set their timezones again.
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userTimezones));
+        settings.store.storedTimezones = JSON.stringify(userTimezones);
     } catch (err) {
-        console.warn("[Timezones] Failed to save timezones:", err);
+        console.warn("[Timezones] Failed to save timezones to settings:", err);
     }
 }
 
@@ -122,6 +122,13 @@ const settings = definePluginSettings({
         type: OptionType.BOOLEAN,
         description: "Show GMT offset (e.g. GMT+2)",
         default: false
+    },
+    // Hidden backing store for per‑user timezones.
+    storedTimezones: {
+        type: OptionType.STRING,
+        description: "",
+        default: "{}",
+        hidden: true
     }
 });
 
