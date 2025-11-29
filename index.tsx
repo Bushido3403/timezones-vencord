@@ -257,7 +257,7 @@ export default definePlugin({
             if (!tz) return null;
 
             const timestamp = message.timestamp
-                ? message.timestamp.toDate()
+                ? new Date(message.timestamp)
                 : new Date();
 
             const short = formatUserTime(message.author.id, timestamp, false);
