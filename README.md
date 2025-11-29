@@ -17,7 +17,7 @@ A Vencord plugin that allows you to track and display other users' local times d
 1. Right-click on any user
 2. Navigate to **Timezones** → **Set Timezone** (or **Change Timezone** if already set)
 3. Select a region (Americas, Europe, Asia, Oceania, Africa)
-4. Choose a city from the list
+4. Choose a city from the list (for their timezone, for example "Los Angeles" for PST)
 
 ### Viewing Local Times
 
