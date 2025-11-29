@@ -1,6 +1,6 @@
 # Timezones
 
-A Vencord plugin that allows you to track and display other users' local times directly in Discord.
+A Vencord plugin that allows you to track and display other users' local times directly in messages.
 
 ## Features
 
