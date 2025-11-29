@@ -193,29 +193,24 @@ export default definePlugin({
 
     settings,
 
+    // Add style >:)
+    styles: `
+        .vc-timezones-tag {
+            margin-left: 0.5rem;
+            font-size: 0.75rem;
+            line-height: 1.0rem;
+            color: var(--text-muted);
+            vertical-align: baseline;
+            font-weight: 500;
+        }
+        [class*="compact"] .vc-timezones-tag {
+            display: inline;
+        }
+    `,
+
     start() {
-        // Load whatever timezones we previously saved.
         loadTimezones();
 
-        // Inject a tiny stylesheet instead of fighting Discord’s classes everywhere.
-        const style = document.createElement("style");
-        style.id = "vc-timezones-style";
-        style.textContent = `
-            .vc-timezones-tag {
-                margin-left: 0.5rem;
-                font-size: 0.75rem;
-                line-height: 1.0rem;
-                color: var(--text-muted);
-                vertical-align: baseline;
-                font-weight: 500;
-            }
-            [class*="compact"] .vc-timezones-tag {
-                display: inline;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Add a little "local time" tag next to messages from users we have a timezone for.
         addMessageDecoration("Timezones", ({ message }) => {
             if (!settings.store.showInMessage) return null;
             if (!message?.author?.id) return null;
@@ -223,7 +218,6 @@ export default definePlugin({
             const tz = userTimezones[message.author.id];
             if (!tz) return null;
 
-            // Prefer Discord's message timestamp; worst case, use "now".
             const timestamp = message.timestamp
                 ? new Date(message.timestamp)
                 : new Date();
@@ -233,7 +227,6 @@ export default definePlugin({
 
             if (!short || !long) return null;
 
-            // Short label inline, full info on hover.
             return (
                 <Tooltip text={`${long} (${tz})`}>
                     {props => <span {...props} className="vc-timezones-tag">({short})</span>}
@@ -243,11 +236,7 @@ export default definePlugin({
     },
 
     stop() {
-        // Unhook message decorations and clean up our styles so we don’t leave junk behind when disabled.
         removeMessageDecoration("Timezones");
-
-        const style = document.getElementById("vc-timezones-style");
-        if (style) style.remove();
     },
 
     contextMenus: {
