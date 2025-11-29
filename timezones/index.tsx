@@ -186,7 +186,7 @@ export default definePlugin({
             .vc-timezones-tag {
                 margin-left: 0.5rem;
                 font-size: 0.75rem;
-                line-height: 1.375rem;
+                line-height: 1.0rem;
                 color: var(--text-muted);
                 vertical-align: baseline;
                 font-weight: 500;
@@ -218,7 +218,7 @@ export default definePlugin({
             // Short label inline, full info on hover.
             return (
                 <Tooltip text={`${long} (${tz})`}>
-                    {props => <span {...props} className="vc-timezones-tag">{short} Local</span>}
+                    {props => <span {...props} className="vc-timezones-tag">({short})</span>}
                 </Tooltip>
             );
         });
