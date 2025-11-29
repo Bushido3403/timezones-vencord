@@ -5,18 +5,23 @@ import definePlugin, { OptionType } from "@utils/types";
 import { findByPropsLazy } from "@webpack";
 import { Menu, Tooltip, React } from "@webpack/common";
 
+// Discord exposes a locale getter somewhere deep in webpack land.
+// We grab it so we can format dates in the user's language.
 const Locale = findByPropsLazy("getLocale");
 
 const STORAGE_KEY = "vencord-timezones";
 
 type TimezoneMap = Record<string, string>;
 
+// Simple in‑memory cache of userId -> timezone.
+// Backed by localStorage so it survives restarts.
 let userTimezones: TimezoneMap = {};
 
 function loadTimezones() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
+            // If it breaks here, someone probably hand‑edited localStorage.
             userTimezones = JSON.parse(raw);
         }
     } catch (err) {
@@ -27,12 +32,15 @@ function loadTimezones() {
 
 function saveTimezones() {
     try {
+        // Fire‑and‑forget: worst case, user has to set their timezones again.
         localStorage.setItem(STORAGE_KEY, JSON.stringify(userTimezones));
     } catch (err) {
         console.warn("[Timezones] Failed to save timezones:", err);
     }
 }
 
+// In modern browsers this gives us the list of valid IANA timezones.
+// We don't *need* this list right now, but it’s handy if we ever add search.
 const allTimezones: string[] = (Intl as any).supportedValuesOf
     ? (Intl as any).supportedValuesOf("timeZone")
     : [];
@@ -42,6 +50,7 @@ interface TimezoneOption {
     tz: string;
 }
 
+// Curated, human‑friendly timezones so users don’t have to scroll through 300+ cryptic IANA names.
 const zonesByRegion: Record<string, TimezoneOption[]> = {
     "Americas": [
         { label: "New York (EST/EDT)", tz: "America/New_York" },
@@ -94,8 +103,10 @@ const zonesByRegion: Record<string, TimezoneOption[]> = {
     ]
 };
 
+// Cached list of regions, so we can iterate them without touching the object.
 const regionNames = Object.keys(zonesByRegion);
 
+// Plugin‑wide settings. These are tweakable in the Vencord UI.
 const settings = definePluginSettings({
     twentyFourHours: {
         type: OptionType.BOOLEAN,
@@ -114,10 +125,15 @@ const settings = definePluginSettings({
     }
 });
 
+// Formats a date as "what time is it for *this* user", respecting:
+// - Their timezone (we stored it)
+// - Your locale
+// - Your 12h/24h preference (setting)
 function formatUserTime(userId: string, date: Date, withDate = false): string | null {
     const tz = userTimezones[userId];
     if (!tz) return null;
 
+    // Fallback to en-US if Discord doesn’t give us anything.
     const locale = Locale?.getLocale?.() ?? "en-US";
 
     const opts: Intl.DateTimeFormatOptions = withDate
@@ -138,6 +154,7 @@ function formatUserTime(userId: string, date: Date, withDate = false): string | 
         ...opts,
         hourCycle: settings.store.twentyFourHours ? "h23" : "h12",
         timeZone: tz,
+        // "shortOffset" gives nice things like "GMT+2" instead of huge names.
         timeZoneName: settings.store.showOffset ? "shortOffset" : undefined
     });
 
@@ -152,8 +169,10 @@ export default definePlugin({
     settings,
 
     start() {
+        // Load whatever timezones we previously saved.
         loadTimezones();
 
+        // Inject a tiny stylesheet instead of fighting Discord’s classes everywhere.
         const style = document.createElement("style");
         style.id = "vc-timezones-style";
         style.textContent = `
@@ -171,6 +190,7 @@ export default definePlugin({
         `;
         document.head.appendChild(style);
 
+        // Add a little "local time" tag next to messages from users we have a timezone for.
         addMessageDecoration("Timezones", ({ message }) => {
             if (!settings.store.showInMessage) return null;
             if (!message?.author?.id) return null;
@@ -178,6 +198,7 @@ export default definePlugin({
             const tz = userTimezones[message.author.id];
             if (!tz) return null;
 
+            // Prefer Discord's message timestamp; worst case, use "now".
             const timestamp = message.timestamp
                 ? new Date(message.timestamp)
                 : new Date();
@@ -187,6 +208,7 @@ export default definePlugin({
 
             if (!short || !long) return null;
 
+            // Short label inline, full info on hover.
             return (
                 <Tooltip text={`${long} (${tz})`}>
                     {props => <span {...props} className="vc-timezones-tag">{short} Local</span>}
@@ -196,6 +218,7 @@ export default definePlugin({
     },
 
     stop() {
+        // Unhook message decorations and clean up our styles so we don’t leave junk behind when disabled.
         removeMessageDecoration("Timezones");
 
         const style = document.getElementById("vc-timezones-style");
@@ -208,9 +231,11 @@ export default definePlugin({
 
             const timezone = userTimezones[user.id];
 
+            // Items that live under "Timezones" in the user context menu.
             const submenuItems: React.ReactNode[] = [];
 
             if (timezone) {
+                // Just a read‑only reminder of what we currently stored.
                 submenuItems.push(
                     <Menu.MenuItem
                         id="vc-tz-current"
@@ -220,6 +245,7 @@ export default definePlugin({
                 );
             }
 
+            // Main entry to pick a timezone, grouped by region so users don't have to hunt too hard.
             submenuItems.push(
                 <Menu.MenuItem
                     id="vc-tz-set"
@@ -233,6 +259,7 @@ export default definePlugin({
                                     id={`vc-tz-${zone.tz}`}
                                     label={zone.label}
                                     action={() => {
+                                        // One click and we remember this forever (or until cleared).
                                         userTimezones[user.id] = zone.tz;
                                         saveTimezones();
                                         console.log(
@@ -246,6 +273,7 @@ export default definePlugin({
                 />
             );
 
+            // Escape hatch if you mis‑set or no longer care about the user’s timezone.
             submenuItems.push(
                 <Menu.MenuItem
                     id="vc-tz-remove"
@@ -259,6 +287,7 @@ export default definePlugin({
                 />
             );
 
+            // Finally, actually attach our "Timezones" group to the user context menu.
             children.push(
                 <Menu.MenuSeparator />,
                 <Menu.MenuItem
